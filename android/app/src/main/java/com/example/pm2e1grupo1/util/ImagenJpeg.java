@@ -60,6 +60,26 @@ public final class ImagenJpeg {
         return reducida;
     }
 
+    /**
+     * Version reducida y bien orientada de la foto para mostrarla en pantalla.
+     * Se debe llamar fuera del hilo principal; devuelve null si no se puede leer.
+     */
+    public static Bitmap cargarMiniatura(File archivo, int ladoMaximo) {
+        BitmapFactory.Options medidas = new BitmapFactory.Options();
+        medidas.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(archivo.getAbsolutePath(), medidas);
+
+        int factor = 1;
+        while (Math.max(medidas.outWidth, medidas.outHeight) / (factor * 2) >= ladoMaximo) {
+            factor *= 2;
+        }
+
+        BitmapFactory.Options opciones = new BitmapFactory.Options();
+        opciones.inSampleSize = factor;
+        Bitmap imagen = BitmapFactory.decodeFile(archivo.getAbsolutePath(), opciones);
+        return imagen == null ? null : rotarSegunExif(imagen, archivo);
+    }
+
     private static int factorDeReduccion(int ancho, int alto) {
         int factor = 1;
         while (Math.max(ancho, alto) / factor > LADO_MAXIMO) {
