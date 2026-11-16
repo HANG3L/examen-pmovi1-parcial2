@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Formulario compartido por la pantalla de registro y la de edicion -->
+<!-- Formulario de contacto: fotografia, nombre, telefono y ubicacion (latitud/longitud bloqueadas) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -31,40 +31,14 @@
                 app:srcCompat="@drawable/ic_persona"
                 app:tint="?attr/colorOnPrimaryContainer" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="@string/foto_contacto"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <LinearLayout
+            <Button
+                android:id="@+id/btnTomarFoto"
+                style="@style/Widget.Material3.Button.TonalButton.Icon"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnTomarFoto"
-                    style="@style/Widget.Material3.Button.TonalButton.Icon"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="6dp"
-                    android:layout_weight="1"
-                    android:text="@string/camara"
-                    app:icon="@drawable/ic_camara" />
-
-                <Button
-                    android:id="@+id/btnGaleria"
-                    style="@style/Widget.Material3.Button.TonalButton.Icon"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:text="@string/galeria"
-                    app:icon="@drawable/ic_galeria" />
-            </LinearLayout>
+                android:text="@string/tomar_fotografia"
+                app:icon="@drawable/ic_camara" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -88,45 +62,6 @@
                 android:text="@string/datos_contacto"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
                 android:textColor="?attr/colorOnSurface" />
-
-            <!-- Pais -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/campoPais"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="@string/pais"
-                    app:startIconDrawable="@drawable/ic_mundo">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/txtPais"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="true"
-                        android:focusable="false"
-                        android:inputType="none"
-                        android:textColor="?attr/colorOnSurface" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <Button
-                    android:id="@+id/btnAgregarPais"
-                    style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="4dp"
-                    android:contentDescription="@string/agregar_pais"
-                    android:tooltipText="@string/agregar_pais"
-                    app:icon="@drawable/ic_agregar" />
-            </LinearLayout>
 
             <!-- Nombre -->
             <com.google.android.material.textfield.TextInputLayout
@@ -168,22 +103,44 @@
                     android:maxLength="8" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Nota -->
+            <!-- Latitud: bloqueada, la llena el GPS -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/campoNota"
+                android:id="@+id/campoLatitud"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/nota"
-                app:startIconDrawable="@drawable/ic_nota">
+                android:layout_marginBottom="12dp"
+                android:hint="@string/latitud"
+                app:helperText="@string/ayuda_ubicacion"
+                app:startIconDrawable="@drawable/ic_mundo">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/txtNota"
+                    android:id="@+id/txtLatitud"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="top"
-                    android:inputType="textMultiLine|textCapSentences"
-                    android:minLines="3" />
+                    android:clickable="false"
+                    android:cursorVisible="false"
+                    android:focusable="false"
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Longitud: bloqueada, la llena el GPS -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/campoLongitud"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/longitud"
+                app:startIconDrawable="@drawable/ic_mundo">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/txtLongitud"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:cursorVisible="false"
+                    android:focusable="false"
+                    android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

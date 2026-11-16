@@ -10,3 +10,7 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+# Gson convierte JSON <-> estas clases por reflexion: R8 no debe renombrar sus campos.
+-keep class com.example.pm2e1grupo1.modelo.** { *; }
+-keepclassmembers class com.example.pm2e1grupo1.red.ContactosApi$ErrorJson { *; }
