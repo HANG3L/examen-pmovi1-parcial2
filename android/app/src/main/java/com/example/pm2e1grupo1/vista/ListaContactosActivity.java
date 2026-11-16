@@ -1,4 +1,4 @@
-package com.example.pm1ea0471.vista;
+package com.example.pm2e1grupo1.vista;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,11 +13,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.pm1ea0471.R;
-import com.example.pm1ea0471.controlador.ContactoControlador;
-import com.example.pm1ea0471.modelo.Contacto;
-import com.example.pm1ea0471.util.Alertas;
-import com.example.pm1ea0471.util.Utilidades;
+import com.example.pm2e1grupo1.R;
+import com.example.pm2e1grupo1.controlador.ContactoControlador;
+import com.example.pm2e1grupo1.modelo.Contacto;
+import com.example.pm2e1grupo1.util.Alertas;
+import com.example.pm2e1grupo1.util.Utilidades;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 

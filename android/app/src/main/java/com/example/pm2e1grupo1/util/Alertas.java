@@ -1,4 +1,4 @@
-package com.example.pm1ea0471.util;
+package com.example.pm2e1grupo1.util;
 
 import android.app.Activity;
 import android.content.Context;
@@ -20,7 +20,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 
-import com.example.pm1ea0471.R;
+import com.example.pm2e1grupo1.R;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;

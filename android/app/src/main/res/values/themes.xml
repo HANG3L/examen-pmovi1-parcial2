@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Tema base: los colores cambian solos entre modo claro (values) y oscuro (values-night) -->
-    <style name="Base.Theme.PM1EA0471" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Base.Theme.PM2E1Grupo1" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primario</item>
         <item name="colorOnPrimary">@color/sobre_primario</item>
         <item name="colorPrimaryContainer">@color/primario_contenedor</item>
@@ -28,7 +28,7 @@
         <item name="colorSurfaceContainerHighest">@color/tarjeta_alta</item>
     </style>
 
-    <style name="Theme.PM1EA0471" parent="Base.Theme.PM1EA0471" />
+    <style name="Theme.PM2E1Grupo1" parent="Base.Theme.PM2E1Grupo1" />
 
     <!-- Formas -->
     <style name="FormaCircular">

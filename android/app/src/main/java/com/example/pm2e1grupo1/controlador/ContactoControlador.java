@@ -1,10 +1,10 @@
-package com.example.pm1ea0471.controlador;
+package com.example.pm2e1grupo1.controlador;
 
 import android.content.Context;
 
-import com.example.pm1ea0471.dao.BaseDatos;
-import com.example.pm1ea0471.dao.ContactoDao;
-import com.example.pm1ea0471.modelo.Contacto;
+import com.example.pm2e1grupo1.dao.BaseDatos;
+import com.example.pm2e1grupo1.dao.ContactoDao;
+import com.example.pm2e1grupo1.modelo.Contacto;
 
 import java.util.List;
 import java.util.regex.Matcher;

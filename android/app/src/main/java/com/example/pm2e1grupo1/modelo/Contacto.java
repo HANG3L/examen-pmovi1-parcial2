@@ -1,4 +1,4 @@
-package com.example.pm1ea0471.modelo;
+package com.example.pm2e1grupo1.modelo;
 
 /** MODELO: datos de un contacto de la agenda. */
 public class Contacto {

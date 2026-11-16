@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pm1ea0471"
+    namespace = "com.example.pm2e1grupo1"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.pm1ea0471"
+        applicationId = "com.example.pm2e1grupo1"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -33,7 +33,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.activity.ktx)
     implementation(libs.appcompat)
     implementation(libs.constraintlayout)
     implementation(libs.material)

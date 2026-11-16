@@ -1,4 +1,4 @@
-package com.example.pm1ea0471.dao;
+package com.example.pm2e1grupo1.dao;
 
 import android.content.ContentValues;
 import android.database.Cursor;

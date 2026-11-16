@@ -1,4 +1,4 @@
-package com.example.pm1ea0471.vista;
+package com.example.pm2e1grupo1.vista;
 
 import android.Manifest;
 import android.content.Intent;
@@ -20,13 +20,12 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
-import com.example.pm1ea0471.R;
-import com.example.pm1ea0471.controlador.ContactoControlador;
-import com.example.pm1ea0471.controlador.PaisControlador;
-import com.example.pm1ea0471.modelo.Contacto;
-import com.example.pm1ea0471.util.Alertas;
-import com.example.pm1ea0471.util.Utilidades;
-import com.google.android.material.appbar.MaterialToolbar;
+import com.example.pm2e1grupo1.R;
+import com.example.pm2e1grupo1.controlador.ContactoControlador;
+import com.example.pm2e1grupo1.controlador.PaisControlador;
+import com.example.pm2e1grupo1.modelo.Contacto;
+import com.example.pm2e1grupo1.util.Alertas;
+import com.example.pm2e1grupo1.util.Utilidades;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
@@ -36,44 +35,37 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/** VISTA: pantalla para actualizar un contacto existente. */
-public class EditarContactoActivity extends AppCompatActivity {
-
-    /** Id del contacto que se va a editar. */
-    public static final String EXTRA_ID = "id_contacto";
+/** VISTA: pantalla de registro de contactos. */
+public class MainActivity extends AppCompatActivity {
 
     private ImageView imgFoto;
-    private Button btnTomarFoto, btnGaleria, btnAgregarPais, btnGuardar, btnCancelar;
+    private Button btnTomarFoto, btnGaleria, btnAgregarPais, btnGuardar, btnVerContactos;
     private AutoCompleteTextView txtPais;
     private TextInputLayout campoNombre, campoTelefono, campoNota;
     private EditText txtNombre, txtTelefono, txtNota;
 
-    private int idContacto;
     private String rutaFoto = "";
     private Uri uriCamara;
     private ContactoControlador contactoControlador;
     private PaisControlador paisControlador;
 
-    private static final int CODIGO_CAMARA = 2;
-    private static final int CODIGO_GALERIA = 4;
-    private static final int PERMISO_CAMARA = 103;
+    private static final int CODIGO_CAMARA = 1;
+    private static final int CODIGO_GALERIA = 3;
+    private static final int PERMISO_CAMARA = 102;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_editar_contacto);
+        setContentView(R.layout.activity_main);
         Utilidades.ajustarBordes(findViewById(R.id.raiz));
-
-        MaterialToolbar barra = findViewById(R.id.barra);
-        barra.setNavigationOnClickListener(v -> finish());
 
         imgFoto = findViewById(R.id.imgFoto);
         btnTomarFoto = findViewById(R.id.btnTomarFoto);
         btnGaleria = findViewById(R.id.btnGaleria);
         btnAgregarPais = findViewById(R.id.btnAgregarPais);
         btnGuardar = findViewById(R.id.btnGuardar);
-        btnCancelar = findViewById(R.id.btnCancelar);
+        btnVerContactos = findViewById(R.id.btnVerContactos);
         txtPais = findViewById(R.id.txtPais);
         campoNombre = findViewById(R.id.campoNombre);
         campoTelefono = findViewById(R.id.campoTelefono);
@@ -100,24 +92,10 @@ public class EditarContactoActivity extends AppCompatActivity {
 
         btnGaleria.setOnClickListener(v -> abrirGaleria());
         btnAgregarPais.setOnClickListener(v -> mostrarDialogoPais());
-        btnGuardar.setOnClickListener(v -> actualizar());
-        btnCancelar.setOnClickListener(v -> finish());
+        btnGuardar.setOnClickListener(v -> guardar());
 
-        // Datos actuales del contacto
-        idContacto = getIntent().getIntExtra(EXTRA_ID, -1);
-        Contacto contacto = contactoControlador.obtener(idContacto);
-        if (contacto == null) {
-            finish();
-            return;
-        }
-        rutaFoto = contacto.getImagen() == null ? "" : contacto.getImagen();
-        txtNombre.setText(contacto.getNombre());
-        txtTelefono.setText(contacto.getTelefono());
-        txtNota.setText(contacto.getNota());
-        if (contacto.getPais() != null && !contacto.getPais().isEmpty()) {
-            txtPais.setText(contacto.getPais(), false);
-        }
-        Utilidades.cargarFoto(imgFoto, rutaFoto);
+        btnVerContactos.setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, ListaContactosActivity.class)));
     }
 
     @Override
@@ -136,6 +114,9 @@ public class EditarContactoActivity extends AppCompatActivity {
     private void cargarPaises() {
         List<String> paises = paisControlador.listar();
         txtPais.setAdapter(new ArrayAdapter<>(this, R.layout.item_pais, paises));
+        if (!paises.isEmpty() && txtPais.getText().toString().isEmpty()) {
+            txtPais.setText(paises.get(0), false);
+        }
     }
 
     private void mostrarDialogoPais() {
@@ -207,7 +188,7 @@ public class EditarContactoActivity extends AppCompatActivity {
         }
     }
 
-    private void actualizar() {
+    private void guardar() {
         String pais = txtPais.getText().toString().trim();
         String nombre = txtNombre.getText().toString().trim();
         String telefono = txtTelefono.getText().toString().trim();
@@ -219,12 +200,12 @@ public class EditarContactoActivity extends AppCompatActivity {
             return;
         }
 
-        if (contactoControlador.actualizar(new Contacto(idContacto, pais, nombre, telefono, nota, rutaFoto))) {
-            Alertas.mostrar(this, Alertas.Tipo.EXITO, "Cambios guardados",
-                    "Los datos de " + nombre + " se actualizaron correctamente.", this::finish);
+        if (contactoControlador.guardar(new Contacto(pais, nombre, telefono, nota, rutaFoto))) {
+            Alertas.aviso(this, Alertas.Tipo.EXITO, nombre + " se guardó correctamente");
+            limpiarFormulario();
         } else {
-            Alertas.mostrar(this, Alertas.Tipo.ERROR, "No se pudo actualizar",
-                    "Ocurrió un error al actualizar el contacto. Intenta de nuevo.");
+            Alertas.mostrar(this, Alertas.Tipo.ERROR, "No se pudo guardar",
+                    "Ocurrió un error al guardar el contacto. Intenta de nuevo.");
         }
     }
 
@@ -242,5 +223,23 @@ public class EditarContactoActivity extends AppCompatActivity {
         }
         Alertas.mostrar(this, error.titulo.startsWith("Falta") ? Alertas.Tipo.ADVERTENCIA : Alertas.Tipo.ERROR,
                 error.titulo, error.mensaje);
+    }
+
+    private void limpiarFormulario() {
+        txtNombre.setText("");
+        txtTelefono.setText("");
+        txtNota.setText("");
+        campoNombre.setError(null);
+        campoTelefono.setError(null);
+        campoNota.setError(null);
+        rutaFoto = "";
+        uriCamara = null;
+        Utilidades.cargarFoto(imgFoto, null);
+
+        List<String> paises = paisControlador.listar();
+        if (!paises.isEmpty()) {
+            txtPais.setText(paises.get(0), false);
+        }
+        txtNombre.requestFocus();
     }
 }

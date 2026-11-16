@@ -1,4 +1,4 @@
-package com.example.pm1ea0471.vista;
+package com.example.pm2e1grupo1.vista;
 
 import android.Manifest;
 import android.content.Intent;
@@ -14,11 +14,11 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.example.pm1ea0471.R;
-import com.example.pm1ea0471.controlador.ContactoControlador;
-import com.example.pm1ea0471.modelo.Contacto;
-import com.example.pm1ea0471.util.Alertas;
-import com.example.pm1ea0471.util.Utilidades;
+import com.example.pm2e1grupo1.R;
+import com.example.pm2e1grupo1.controlador.ContactoControlador;
+import com.example.pm2e1grupo1.modelo.Contacto;
+import com.example.pm2e1grupo1.util.Alertas;
+import com.example.pm2e1grupo1.util.Utilidades;
 import com.google.android.material.appbar.MaterialToolbar;
 
 /** VISTA: pantalla de llamada. Pide el permiso CALL_PHONE y marca con ACTION_CALL. */

@@ -1,4 +1,4 @@
-package com.example.pm1ea0471.util;
+package com.example.pm2e1grupo1.util;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -14,7 +14,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.widget.ImageViewCompat;
 
-import com.example.pm1ea0471.R;
+import com.example.pm2e1grupo1.R;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.textfield.TextInputLayout;
 
