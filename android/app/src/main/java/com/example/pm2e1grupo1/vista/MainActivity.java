@@ -2,8 +2,6 @@ package com.example.pm2e1grupo1.vista;
 
 import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
@@ -15,8 +13,6 @@ import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
 
 import com.example.pm2e1grupo1.R;
 import com.example.pm2e1grupo1.controlador.ContactoControlador;
@@ -25,15 +21,15 @@ import com.example.pm2e1grupo1.red.ApiConfig;
 import com.example.pm2e1grupo1.red.ContactosApi;
 import com.example.pm2e1grupo1.red.ErrorApi;
 import com.example.pm2e1grupo1.util.Alertas;
+import com.example.pm2e1grupo1.util.CapturaFoto;
 import com.example.pm2e1grupo1.util.GestorUbicacion;
 import com.example.pm2e1grupo1.util.ImagenJpeg;
+import com.example.pm2e1grupo1.util.Permisos;
 import com.example.pm2e1grupo1.util.Utilidades;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
 
     /** Fotografia tomada con la camara (null mientras no se haya tomado). */
     private File archivoFoto;
-    private File archivoFotoPendiente;
+    private CapturaFoto capturaFoto;
 
     private Double latitud;
     private Double longitud;
@@ -66,35 +62,14 @@ public class MainActivity extends AppCompatActivity {
     private final ExecutorService trabajo = Executors.newSingleThreadExecutor();
     private Call llamadaActual;
 
-    // ---------- Resultados de permisos y camara ----------
-
-    private final ActivityResultLauncher<String> lanzadorPermisoCamara =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), concedido -> {
-                if (concedido) {
-                    abrirCamara();
-                } else {
-                    avisarPermisoDenegado(Manifest.permission.CAMERA, "Permiso de cámara denegado",
-                            "Sin acceso a la cámara no es posible tomar la fotografía del contacto.");
-                }
-            });
-
-    private final ActivityResultLauncher<Uri> lanzadorCamara =
-            registerForActivityResult(new ActivityResultContracts.TakePicture(), tomada -> {
-                if (tomada && archivoFotoPendiente != null && archivoFotoPendiente.length() > 0) {
-                    archivoFoto = archivoFotoPendiente;
-                    Utilidades.cargarFoto(imgFoto, uriDe(archivoFoto).toString());
-                } else if (archivoFotoPendiente != null) {
-                    archivoFotoPendiente.delete();
-                }
-                archivoFotoPendiente = null;
-            });
+    // ---------- Resultados de permisos ----------
 
     private final ActivityResultLauncher<String[]> lanzadorPermisoUbicacion =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), resultado -> {
                 if (gestorUbicacion.tienePermiso()) {
                     iniciarUbicacion();
                 } else {
-                    avisarPermisoDenegado(Manifest.permission.ACCESS_FINE_LOCATION,
+                    Permisos.avisarDenegado(this, Manifest.permission.ACCESS_FINE_LOCATION,
                             "Permiso de ubicación denegado",
                             "Sin acceso a la ubicación no es posible guardar el contacto.");
                 }
@@ -121,15 +96,16 @@ public class MainActivity extends AppCompatActivity {
         txtLongitud = findViewById(R.id.txtLongitud);
         capaCargando = findViewById(R.id.cargando);
 
+        capturaFoto = new CapturaFoto(this, this::alTomarFoto);
         gestorUbicacion = new GestorUbicacion(this, this::alCambiarUbicacion);
 
         Utilidades.limpiarErrorAlEscribir(campoNombre);
         Utilidades.limpiarErrorAlEscribir(campoTelefono);
 
-        btnTomarFoto.setOnClickListener(v -> tomarFotografia());
+        btnTomarFoto.setOnClickListener(v -> capturaFoto.tomar());
         btnGuardar.setOnClickListener(v -> guardar());
-        btnVerContactos.setOnClickListener(v -> Alertas.mostrar(this, Alertas.Tipo.INFO,
-                "Próximamente", "La lista de contactos se agrega en el siguiente paso."));
+        btnVerContactos.setOnClickListener(v ->
+                startActivity(new Intent(this, ListaContactosActivity.class)));
     }
 
     @Override
@@ -155,34 +131,9 @@ public class MainActivity extends AppCompatActivity {
 
     // ---------- Fotografia ----------
 
-    private void tomarFotografia() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_GRANTED) {
-            abrirCamara();
-        } else {
-            lanzadorPermisoCamara.launch(Manifest.permission.CAMERA);
-        }
-    }
-
-    private void abrirCamara() {
-        try {
-            archivoFotoPendiente = crearArchivoImagen();
-        } catch (IOException ex) {
-            Alertas.mostrar(this, Alertas.Tipo.ERROR, "Error",
-                    "No se pudo crear el archivo para la fotografía. Intenta de nuevo.");
-            return;
-        }
-        lanzadorCamara.launch(uriDe(archivoFotoPendiente));
-    }
-
-    private File crearArchivoImagen() throws IOException {
-        String fecha = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        File carpeta = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES);
-        return File.createTempFile("JPEG_" + fecha + "_", ".jpg", carpeta);
-    }
-
-    private Uri uriDe(File archivo) {
-        return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", archivo);
+    private void alTomarFoto(File foto) {
+        archivoFoto = foto;
+        Utilidades.cargarFoto(imgFoto, capturaFoto.uriDe(foto).toString());
     }
 
     // ---------- Ubicacion ----------
@@ -223,26 +174,10 @@ public class MainActivity extends AppCompatActivity {
                 () -> startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)));
     }
 
-    /**
-     * Si el permiso se negó con "no volver a preguntar", pedirlo otra vez no hace nada:
-     * se ofrece abrir los ajustes de la app para concederlo a mano.
-     */
-    private void avisarPermisoDenegado(String permiso, String titulo, String mensaje) {
-        if (shouldShowRequestPermissionRationale(permiso)) {
-            Alertas.mostrar(this, Alertas.Tipo.ADVERTENCIA, titulo, mensaje);
-        } else {
-            Alertas.confirmar(this, Alertas.Tipo.ADVERTENCIA, R.drawable.ic_advertencia, titulo,
-                    mensaje + " Puedes concederlo desde los ajustes de la aplicación.",
-                    getString(R.string.abrir_ajustes), getString(R.string.cancelar),
-                    () -> startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", getPackageName(), null))));
-        }
-    }
-
     /** true si ya hay una ubicacion valida; si no, muestra la alerta que corresponda. */
     private boolean ubicacionLista() {
         if (!gestorUbicacion.tienePermiso()) {
-            avisarPermisoDenegado(Manifest.permission.ACCESS_FINE_LOCATION,
+            Permisos.avisarDenegado(this, Manifest.permission.ACCESS_FINE_LOCATION,
                     "Permiso de ubicación denegado",
                     "Sin acceso a la ubicación no es posible guardar el contacto.");
             return false;

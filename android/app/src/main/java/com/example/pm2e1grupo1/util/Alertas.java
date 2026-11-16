@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 
 import com.example.pm2e1grupo1.R;
+import com.example.pm2e1grupo1.red.CargadorImagenes;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
@@ -69,6 +70,17 @@ public final class Alertas {
     public static void confirmar(Context contexto, Tipo tipo, @DrawableRes int icono, String titulo,
                                  String mensaje, String textoAceptar, String textoCancelar, Runnable alAceptar) {
         crearDialogo(contexto, tipo, icono, titulo, mensaje, textoAceptar, textoCancelar, alAceptar).show();
+    }
+
+    /** Muestra en grande la fotografia de un contacto, descargada de la API. */
+    public static void verFoto(Context contexto, String titulo, String archivoUrl) {
+        View vista = LayoutInflater.from(contexto).inflate(R.layout.dialogo_foto, null);
+        ((TextView) vista.findViewById(R.id.txtTitulo)).setText(titulo);
+        CargadorImagenes.mostrar(vista.findViewById(R.id.imgFotoGrande), archivoUrl, 1024);
+
+        AlertDialog dialogo = new MaterialAlertDialogBuilder(contexto).setView(vista).create();
+        vista.findViewById(R.id.btnAceptar).setOnClickListener(v -> dialogo.dismiss());
+        dialogo.show();
     }
 
     public static void aviso(Activity actividad, Tipo tipo, String mensaje) {
