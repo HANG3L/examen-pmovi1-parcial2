@@ -4,9 +4,13 @@
 
 Catedrático: Ing. Ricardo Enrique Lagos Mendoza
 
-| Integrante | Cuenta |
-|---|---|
-| Angel Manuel Rivera | 202330010471 |
+|    IntegranteE                 |   Cuenta     |
+|--------------------------------|--------------|
+| Angel Manuel Rivera            | 202330010471 |
+| Anthony Joel Gonzales Juárez   |202310010114  |
+| Brayan wilfredo Torres aguilar |201820030041  |
+| Johan Moises Lopez Moran       |202220010502  |
+| Luis David Diaz Medina         |202210010189  |
 
 > README en construcción. Al terminar incluirá tecnología asignada, URL base de la API, capturas e instrucciones.
 
