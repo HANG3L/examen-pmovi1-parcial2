@@ -1,0 +1,231 @@
+{
+  "info": {
+    "name": "PM2E1Grupo1 API",
+    "description": "Colección del API REST de contactos (examen segundo parcial, Grupo 1). Cambiar la variable baseUrl si el servidor corre en otra dirección. En la petición «Crear contacto» seleccionar un archivo .jpg en el campo archivo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "contactoId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Crear contacto (POST multipart)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('contactoId', pm.response.json().id); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "nombre", "value": "Jose de Jesus Sarmiento", "type": "text" },
+            { "key": "telefono", "value": "99765645", "type": "text" },
+            { "key": "latitud", "value": "14.48", "type": "text" },
+            { "key": "longitud", "value": "-88.78", "type": "text" },
+            { "key": "archivo", "type": "file", "src": [], "description": "Fotografía image/jpeg, máximo 5 MB" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/api/contactos", "host": ["{{baseUrl}}"], "path": ["api", "contactos"] }
+      }
+    },
+    {
+      "name": "Listar contactos (GET)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/contactos", "host": ["{{baseUrl}}"], "path": ["api", "contactos"] }
+      }
+    },
+    {
+      "name": "Buscar contactos (GET ?buscar=)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/contactos?buscar=jose",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "contactos"],
+          "query": [{ "key": "buscar", "value": "jose" }]
+        }
+      }
+    },
+    {
+      "name": "Obtener contacto (GET /{id})",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/contactos/{{contactoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "contactos", "{{contactoId}}"]
+        }
+      }
+    },
+    {
+      "name": "Descargar fotografía (GET /{id}/archivo)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Content-Type image/jpeg', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('image/jpeg'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/contactos/{{contactoId}}/archivo",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "contactos", "{{contactoId}}", "archivo"]
+        }
+      }
+    },
+    {
+      "name": "Actualizar contacto (PUT multipart)",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "nombre", "value": "Maria Lopez", "type": "text" },
+            { "key": "telefono", "value": "88776655", "type": "text" },
+            { "key": "latitud", "value": "15.50", "type": "text" },
+            { "key": "longitud", "value": "-88.00", "type": "text" },
+            { "key": "archivo", "type": "file", "src": [], "disabled": true, "description": "Opcional: reemplaza la fotografía" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/contactos/{{contactoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "contactos", "{{contactoId}}"]
+        }
+      }
+    },
+    {
+      "name": "Eliminar contacto (DELETE)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/contactos/{{contactoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "contactos", "{{contactoId}}"]
+        }
+      }
+    },
+    {
+      "name": "Errores de validación",
+      "item": [
+        {
+          "name": "415 · MIME no permitido (enviar un .png)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('415 Unsupported Media Type', () => pm.response.to.have.status(415));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "nombre", "value": "Ana Perez", "type": "text" },
+                { "key": "telefono", "value": "99765645", "type": "text" },
+                { "key": "latitud", "value": "14.48", "type": "text" },
+                { "key": "longitud", "value": "-88.78", "type": "text" },
+                { "key": "archivo", "type": "file", "src": [], "description": "Seleccionar un archivo .png" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/contactos", "host": ["{{baseUrl}}"], "path": ["api", "contactos"] }
+          }
+        },
+        {
+          "name": "400 · datos inválidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "nombre", "value": "A1", "type": "text" },
+                { "key": "telefono", "value": "12", "type": "text" },
+                { "key": "latitud", "value": "14.48", "type": "text" },
+                { "key": "longitud", "value": "-88.78", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/contactos", "host": ["{{baseUrl}}"], "path": ["api", "contactos"] }
+          }
+        },
+        {
+          "name": "404 · contacto inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 Not Found', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/contactos/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contactos", "99999"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
