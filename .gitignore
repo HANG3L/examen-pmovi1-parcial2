@@ -50,6 +50,7 @@ api/**/appsettings.Local.json
 api/**/secrets.json
 api/**/*.mdf
 api/**/*.ldf
+api/**/App_Data/
 api/**/*.db
 api/**/*.sqlite
 
