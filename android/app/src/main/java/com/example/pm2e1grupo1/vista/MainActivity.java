@@ -5,26 +5,28 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
+import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 
 import androidx.activity.EdgeToEdge;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import com.example.pm2e1grupo1.R;
 import com.example.pm2e1grupo1.controlador.ContactoControlador;
-import com.example.pm2e1grupo1.controlador.PaisControlador;
 import com.example.pm2e1grupo1.modelo.Contacto;
+import com.example.pm2e1grupo1.red.ApiConfig;
+import com.example.pm2e1grupo1.red.ContactosApi;
+import com.example.pm2e1grupo1.red.ErrorApi;
 import com.example.pm2e1grupo1.util.Alertas;
+import com.example.pm2e1grupo1.util.GestorUbicacion;
+import com.example.pm2e1grupo1.util.ImagenJpeg;
 import com.example.pm2e1grupo1.util.Utilidades;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -32,26 +34,73 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-/** VISTA: pantalla de registro de contactos. */
+import okhttp3.Call;
+
+/** VISTA - Pantalla 1: registro de un contacto con fotografia y ubicacion, enviado a la API. */
 public class MainActivity extends AppCompatActivity {
 
     private ImageView imgFoto;
-    private Button btnTomarFoto, btnGaleria, btnAgregarPais, btnGuardar, btnVerContactos;
-    private AutoCompleteTextView txtPais;
-    private TextInputLayout campoNombre, campoTelefono, campoNota;
-    private EditText txtNombre, txtTelefono, txtNota;
+    private Button btnTomarFoto, btnGuardar, btnVerContactos;
+    private TextInputLayout campoNombre, campoTelefono;
+    private EditText txtNombre, txtTelefono, txtLatitud, txtLongitud;
+    private View capaCargando;
 
-    private String rutaFoto = "";
-    private Uri uriCamara;
-    private ContactoControlador contactoControlador;
-    private PaisControlador paisControlador;
+    private final ContactoControlador controlador = new ContactoControlador();
+    private GestorUbicacion gestorUbicacion;
 
-    private static final int CODIGO_CAMARA = 1;
-    private static final int CODIGO_GALERIA = 3;
-    private static final int PERMISO_CAMARA = 102;
+    /** Fotografia tomada con la camara (null mientras no se haya tomado). */
+    private File archivoFoto;
+    private File archivoFotoPendiente;
+
+    private Double latitud;
+    private Double longitud;
+
+    private boolean permisoUbicacionSolicitado;
+    private boolean avisoGpsMostrado;
+
+    /** Un solo hilo de trabajo: ajustar la foto no debe correr en el hilo principal. */
+    private final ExecutorService trabajo = Executors.newSingleThreadExecutor();
+    private Call llamadaActual;
+
+    // ---------- Resultados de permisos y camara ----------
+
+    private final ActivityResultLauncher<String> lanzadorPermisoCamara =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), concedido -> {
+                if (concedido) {
+                    abrirCamara();
+                } else {
+                    avisarPermisoDenegado(Manifest.permission.CAMERA, "Permiso de cámara denegado",
+                            "Sin acceso a la cámara no es posible tomar la fotografía del contacto.");
+                }
+            });
+
+    private final ActivityResultLauncher<Uri> lanzadorCamara =
+            registerForActivityResult(new ActivityResultContracts.TakePicture(), tomada -> {
+                if (tomada && archivoFotoPendiente != null && archivoFotoPendiente.length() > 0) {
+                    archivoFoto = archivoFotoPendiente;
+                    Utilidades.cargarFoto(imgFoto, uriDe(archivoFoto).toString());
+                } else if (archivoFotoPendiente != null) {
+                    archivoFotoPendiente.delete();
+                }
+                archivoFotoPendiente = null;
+            });
+
+    private final ActivityResultLauncher<String[]> lanzadorPermisoUbicacion =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), resultado -> {
+                if (gestorUbicacion.tienePermiso()) {
+                    iniciarUbicacion();
+                } else {
+                    avisarPermisoDenegado(Manifest.permission.ACCESS_FINE_LOCATION,
+                            "Permiso de ubicación denegado",
+                            "Sin acceso a la ubicación no es posible guardar el contacto.");
+                }
+            });
+
+    // ---------- Ciclo de vida ----------
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,150 +111,224 @@ public class MainActivity extends AppCompatActivity {
 
         imgFoto = findViewById(R.id.imgFoto);
         btnTomarFoto = findViewById(R.id.btnTomarFoto);
-        btnGaleria = findViewById(R.id.btnGaleria);
-        btnAgregarPais = findViewById(R.id.btnAgregarPais);
         btnGuardar = findViewById(R.id.btnGuardar);
         btnVerContactos = findViewById(R.id.btnVerContactos);
-        txtPais = findViewById(R.id.txtPais);
         campoNombre = findViewById(R.id.campoNombre);
         campoTelefono = findViewById(R.id.campoTelefono);
-        campoNota = findViewById(R.id.campoNota);
         txtNombre = findViewById(R.id.txtNombre);
         txtTelefono = findViewById(R.id.txtTelefono);
-        txtNota = findViewById(R.id.txtNota);
+        txtLatitud = findViewById(R.id.txtLatitud);
+        txtLongitud = findViewById(R.id.txtLongitud);
+        capaCargando = findViewById(R.id.cargando);
 
-        contactoControlador = new ContactoControlador(this);
-        paisControlador = new PaisControlador(this);
+        gestorUbicacion = new GestorUbicacion(this, this::alCambiarUbicacion);
 
-        cargarPaises();
         Utilidades.limpiarErrorAlEscribir(campoNombre);
         Utilidades.limpiarErrorAlEscribir(campoTelefono);
-        Utilidades.limpiarErrorAlEscribir(campoNota);
 
-        btnTomarFoto.setOnClickListener(v -> {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, PERMISO_CAMARA);
-            } else {
-                abrirCamara();
-            }
-        });
-
-        btnGaleria.setOnClickListener(v -> abrirGaleria());
-        btnAgregarPais.setOnClickListener(v -> mostrarDialogoPais());
+        btnTomarFoto.setOnClickListener(v -> tomarFotografia());
         btnGuardar.setOnClickListener(v -> guardar());
-
-        btnVerContactos.setOnClickListener(v ->
-                startActivity(new Intent(MainActivity.this, ListaContactosActivity.class)));
+        btnVerContactos.setOnClickListener(v -> Alertas.mostrar(this, Alertas.Tipo.INFO,
+                "Próximamente", "La lista de contactos se agrega en el siguiente paso."));
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISO_CAMARA) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                abrirCamara();
-            } else {
-                Alertas.mostrar(this, Alertas.Tipo.ADVERTENCIA, "Permiso denegado",
-                        "Sin acceso a la cámara no es posible tomar fotos. Puedes elegir una imagen de la galería.");
-            }
-        }
+    protected void onResume() {
+        super.onResume();
+        iniciarUbicacion();
     }
 
-    private void cargarPaises() {
-        List<String> paises = paisControlador.listar();
-        txtPais.setAdapter(new ArrayAdapter<>(this, R.layout.item_pais, paises));
-        if (!paises.isEmpty() && txtPais.getText().toString().isEmpty()) {
-            txtPais.setText(paises.get(0), false);
-        }
+    @Override
+    protected void onPause() {
+        gestorUbicacion.detener();
+        super.onPause();
     }
 
-    private void mostrarDialogoPais() {
-        Alertas.pedirPais(this, nombrePais -> {
-            if (paisControlador.agregar(nombrePais)) {
-                cargarPaises();
-                txtPais.setText(nombrePais, false);
-                Alertas.aviso(this, Alertas.Tipo.EXITO, "País agregado: " + nombrePais);
-            } else {
-                Alertas.mostrar(this, Alertas.Tipo.ADVERTENCIA, "País repetido",
-                        "«" + nombrePais + "» ya está registrado en la lista.");
-            }
-        });
+    @Override
+    protected void onDestroy() {
+        if (llamadaActual != null) {
+            llamadaActual.cancel();
+        }
+        trabajo.shutdownNow();
+        super.onDestroy();
+    }
+
+    // ---------- Fotografia ----------
+
+    private void tomarFotografia() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            abrirCamara();
+        } else {
+            lanzadorPermisoCamara.launch(Manifest.permission.CAMERA);
+        }
     }
 
     private void abrirCamara() {
-        Intent intentCamara = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (intentCamara.resolveActivity(getPackageManager()) == null) {
-            Alertas.mostrar(this, Alertas.Tipo.INFO, "Cámara no disponible",
-                    "Este dispositivo no tiene una cámara disponible. Usa el botón «Galería».");
-            return;
-        }
-
-        File archivoFoto;
         try {
-            archivoFoto = crearArchivoImagen();
+            archivoFotoPendiente = crearArchivoImagen();
         } catch (IOException ex) {
             Alertas.mostrar(this, Alertas.Tipo.ERROR, "Error",
-                    "No se pudo crear el archivo para la foto. Intenta de nuevo.");
+                    "No se pudo crear el archivo para la fotografía. Intenta de nuevo.");
             return;
         }
-
-        uriCamara = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", archivoFoto);
-        intentCamara.putExtra(MediaStore.EXTRA_OUTPUT, uriCamara);
-        intentCamara.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivityForResult(intentCamara, CODIGO_CAMARA);
-    }
-
-    private void abrirGaleria() {
-        Intent intentGaleria = new Intent(Intent.ACTION_PICK);
-        intentGaleria.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
-        startActivityForResult(intentGaleria, CODIGO_GALERIA);
+        lanzadorCamara.launch(uriDe(archivoFotoPendiente));
     }
 
     private File crearArchivoImagen() throws IOException {
-        String fecha = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String fecha = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         File carpeta = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES);
         return File.createTempFile("JPEG_" + fecha + "_", ".jpg", carpeta);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != RESULT_OK) {
+    private Uri uriDe(File archivo) {
+        return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", archivo);
+    }
+
+    // ---------- Ubicacion ----------
+
+    /** Arranca la ubicacion en tiempo real, o explica por que no se puede (permiso o GPS apagado). */
+    private void iniciarUbicacion() {
+        if (!gestorUbicacion.tienePermiso()) {
+            if (!permisoUbicacionSolicitado) {
+                permisoUbicacionSolicitado = true;
+                lanzadorPermisoUbicacion.launch(new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION});
+            }
             return;
         }
-        if (requestCode == CODIGO_CAMARA && uriCamara != null) {
-            rutaFoto = uriCamara.toString();
-            Utilidades.cargarFoto(imgFoto, rutaFoto);
-        } else if (requestCode == CODIGO_GALERIA && data != null && data.getData() != null) {
-            String copia = Utilidades.copiarFoto(this, data.getData());
-            if (copia == null) {
-                Alertas.mostrar(this, Alertas.Tipo.ERROR, "Error",
-                        "No se pudo cargar la imagen seleccionada. Prueba con otra.");
-                return;
+        if (!gestorUbicacion.gpsActivo()) {
+            if (!avisoGpsMostrado) {
+                avisoGpsMostrado = true;
+                avisarGpsApagado();
             }
-            rutaFoto = copia;
-            Utilidades.cargarFoto(imgFoto, rutaFoto);
+            return;
+        }
+        avisoGpsMostrado = false;
+        gestorUbicacion.iniciar();
+    }
+
+    private void alCambiarUbicacion(double nuevaLatitud, double nuevaLongitud) {
+        latitud = nuevaLatitud;
+        longitud = nuevaLongitud;
+        txtLatitud.setText(String.format(Locale.US, "%.6f", nuevaLatitud));
+        txtLongitud.setText(String.format(Locale.US, "%.6f", nuevaLongitud));
+    }
+
+    private void avisarGpsApagado() {
+        Alertas.confirmar(this, Alertas.Tipo.ADVERTENCIA, R.drawable.ic_advertencia,
+                "Alerta", "Gps no está activo.",
+                getString(R.string.activar_gps), getString(R.string.cancelar),
+                () -> startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)));
+    }
+
+    /**
+     * Si el permiso se negó con "no volver a preguntar", pedirlo otra vez no hace nada:
+     * se ofrece abrir los ajustes de la app para concederlo a mano.
+     */
+    private void avisarPermisoDenegado(String permiso, String titulo, String mensaje) {
+        if (shouldShowRequestPermissionRationale(permiso)) {
+            Alertas.mostrar(this, Alertas.Tipo.ADVERTENCIA, titulo, mensaje);
+        } else {
+            Alertas.confirmar(this, Alertas.Tipo.ADVERTENCIA, R.drawable.ic_advertencia, titulo,
+                    mensaje + " Puedes concederlo desde los ajustes de la aplicación.",
+                    getString(R.string.abrir_ajustes), getString(R.string.cancelar),
+                    () -> startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", getPackageName(), null))));
         }
     }
 
+    /** true si ya hay una ubicacion valida; si no, muestra la alerta que corresponda. */
+    private boolean ubicacionLista() {
+        if (!gestorUbicacion.tienePermiso()) {
+            avisarPermisoDenegado(Manifest.permission.ACCESS_FINE_LOCATION,
+                    "Permiso de ubicación denegado",
+                    "Sin acceso a la ubicación no es posible guardar el contacto.");
+            return false;
+        }
+        if (!gestorUbicacion.gpsActivo()) {
+            avisarGpsApagado();
+            return false;
+        }
+        if (latitud == null || longitud == null) {
+            Alertas.mostrar(this, Alertas.Tipo.ADVERTENCIA, "Ubicación requerida",
+                    "Debe describir la ubicación. Espera a que el GPS la obtenga.");
+            return false;
+        }
+        return true;
+    }
+
+    // ---------- Guardar ----------
+
     private void guardar() {
-        String pais = txtPais.getText().toString().trim();
         String nombre = txtNombre.getText().toString().trim();
         String telefono = txtTelefono.getText().toString().trim();
-        String nota = txtNota.getText().toString().trim();
 
-        ContactoControlador.Error error = contactoControlador.validar(nombre, telefono, nota);
+        ContactoControlador.Error error = controlador.validar(archivoFoto != null, nombre, telefono);
         if (error != null) {
             mostrarError(error);
             return;
         }
+        if (!ubicacionLista()) {
+            return;
+        }
+        enviar(nombre, telefono, latitud, longitud, archivoFoto);
+    }
 
-        if (contactoControlador.guardar(new Contacto(pais, nombre, telefono, nota, rutaFoto))) {
-            Alertas.aviso(this, Alertas.Tipo.EXITO, nombre + " se guardó correctamente");
-            limpiarFormulario();
+    /** Sube el contacto a la API. Se puede llamar de nuevo desde "Reintentar". */
+    private void enviar(String nombre, String telefono, double lat, double lng, File foto) {
+        mostrarCarga(true);
+
+        trabajo.execute(() -> {
+            File aSubir;
+            try {
+                aSubir = ImagenJpeg.ajustarAlLimite(foto, ApiConfig.TAMANO_MAXIMO_BYTES);
+            } catch (IOException ex) {
+                runOnUiThread(() -> {
+                    mostrarCarga(false);
+                    Alertas.mostrar(this, Alertas.Tipo.ERROR, "Fotografía no válida", ex.getMessage());
+                });
+                return;
+            }
+
+            llamadaActual = ContactosApi.crear(nombre, telefono, lat, lng, aSubir,
+                    new ContactosApi.Respuesta<Contacto>() {
+                        @Override
+                        public void alExito(Contacto contacto) {
+                            runOnUiThread(() -> alGuardar(contacto));
+                        }
+
+                        @Override
+                        public void alError(ErrorApi error) {
+                            runOnUiThread(() -> alErrorDeApi(error,
+                                    () -> enviar(nombre, telefono, lat, lng, foto)));
+                        }
+                    });
+        });
+    }
+
+    private void alGuardar(Contacto contacto) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        mostrarCarga(false);
+        Alertas.aviso(this, Alertas.Tipo.EXITO, contacto.getNombre() + " se guardó correctamente");
+        limpiarFormulario();
+    }
+
+    private void alErrorDeApi(ErrorApi error, Runnable reintentar) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        mostrarCarga(false);
+
+        if (error.esSinConexion()) {
+            Alertas.confirmar(this, Alertas.Tipo.ERROR, R.drawable.ic_error, "Sin conexión",
+                    error.getMensaje(), getString(R.string.reintentar), getString(R.string.cancelar),
+                    reintentar);
         } else {
-            Alertas.mostrar(this, Alertas.Tipo.ERROR, "No se pudo guardar",
-                    "Ocurrió un error al guardar el contacto. Intenta de nuevo.");
+            Alertas.mostrar(this, Alertas.Tipo.ERROR, "No se pudo guardar", error.getMensaje());
         }
     }
 
@@ -217,29 +340,25 @@ public class MainActivity extends AppCompatActivity {
             case TELEFONO:
                 campoTelefono.setError(error.errorCampo);
                 break;
-            case NOTA:
-                campoNota.setError(error.errorCampo);
+            case FOTO:
                 break;
         }
         Alertas.mostrar(this, error.titulo.startsWith("Falta") ? Alertas.Tipo.ADVERTENCIA : Alertas.Tipo.ERROR,
                 error.titulo, error.mensaje);
     }
 
+    private void mostrarCarga(boolean visible) {
+        capaCargando.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    /** Deja listo el formulario para otro contacto (la ubicacion se conserva: sigue siendo la actual). */
     private void limpiarFormulario() {
         txtNombre.setText("");
         txtTelefono.setText("");
-        txtNota.setText("");
         campoNombre.setError(null);
         campoTelefono.setError(null);
-        campoNota.setError(null);
-        rutaFoto = "";
-        uriCamara = null;
+        archivoFoto = null;
         Utilidades.cargarFoto(imgFoto, null);
-
-        List<String> paises = paisControlador.listar();
-        if (!paises.isEmpty()) {
-            txtPais.setText(paises.get(0), false);
-        }
         txtNombre.requestFocus();
     }
 }

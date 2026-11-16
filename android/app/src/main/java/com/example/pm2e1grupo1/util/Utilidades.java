@@ -8,7 +8,6 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.ImageView;
 
-import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -18,10 +17,7 @@ import com.example.pm2e1grupo1.R;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.textfield.TextInputLayout;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 
 public final class Utilidades {
 
@@ -59,28 +55,6 @@ public final class Utilidades {
             return entrada != null;
         } catch (Exception e) {
             return false;
-        }
-    }
-
-    /** Copia la foto elegida de la galeria a la carpeta de la app, donde siempre se podra leer. */
-    public static String copiarFoto(Context contexto, Uri origen) {
-        try {
-            File carpeta = contexto.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES);
-            File destino = File.createTempFile("GAL_", ".jpg", carpeta);
-            try (InputStream entrada = contexto.getContentResolver().openInputStream(origen);
-                 OutputStream salida = new FileOutputStream(destino)) {
-                if (entrada == null) {
-                    return null;
-                }
-                byte[] buffer = new byte[8192];
-                int leidos;
-                while ((leidos = entrada.read(buffer)) != -1) {
-                    salida.write(buffer, 0, leidos);
-                }
-            }
-            return FileProvider.getUriForFile(contexto, contexto.getPackageName() + ".fileprovider", destino).toString();
-        } catch (Exception e) {
-            return null;
         }
     }
 

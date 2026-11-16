@@ -4,12 +4,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -24,9 +21,7 @@ import com.example.pm2e1grupo1.R;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
-import com.google.android.material.textfield.TextInputLayout;
 
-import java.util.function.Consumer;
 
 /**
  * Todas las alertas de la app en un solo lugar, con el mismo estilo:
@@ -74,46 +69,6 @@ public final class Alertas {
     public static void confirmar(Context contexto, Tipo tipo, @DrawableRes int icono, String titulo,
                                  String mensaje, String textoAceptar, String textoCancelar, Runnable alAceptar) {
         crearDialogo(contexto, tipo, icono, titulo, mensaje, textoAceptar, textoCancelar, alAceptar).show();
-    }
-
-    /** Pide el nombre de un pais nuevo. El dialogo no se cierra si el campo esta vacio. */
-    public static void pedirPais(Context contexto, Consumer<String> alGuardar) {
-        View vista = LayoutInflater.from(contexto).inflate(R.layout.dialogo_pais, null);
-        pintarIcono(vista, Tipo.INFO, R.drawable.ic_mundo);
-
-        TextInputLayout campoPais = vista.findViewById(R.id.campoNuevoPais);
-        EditText txtPais = vista.findViewById(R.id.txtNuevoPais);
-        Utilidades.limpiarErrorAlEscribir(campoPais);
-
-        AlertDialog dialogo = new MaterialAlertDialogBuilder(contexto).setView(vista).create();
-
-        vista.findViewById(R.id.btnCancelar).setOnClickListener(v -> dialogo.dismiss());
-        vista.findViewById(R.id.btnAceptar).setOnClickListener(v -> {
-            String nombrePais = txtPais.getText().toString().trim();
-            if (nombrePais.isEmpty()) {
-                campoPais.setError("Escribe el nombre del país");
-                return;
-            }
-            dialogo.dismiss();
-            alGuardar.accept(nombrePais);
-        });
-
-        if (dialogo.getWindow() != null) {
-            dialogo.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-        }
-        txtPais.requestFocus();
-        dialogo.show();
-    }
-
-    /** Muestra la foto de un contacto en grande. */
-    public static void verFoto(Context contexto, String titulo, String rutaFoto) {
-        View vista = LayoutInflater.from(contexto).inflate(R.layout.dialogo_foto, null);
-        ((TextView) vista.findViewById(R.id.txtTitulo)).setText(titulo);
-        ((ImageView) vista.findViewById(R.id.imgFotoGrande)).setImageURI(Uri.parse(rutaFoto));
-
-        AlertDialog dialogo = new MaterialAlertDialogBuilder(contexto).setView(vista).create();
-        vista.findViewById(R.id.btnAceptar).setOnClickListener(v -> dialogo.dismiss());
-        dialogo.show();
     }
 
     public static void aviso(Activity actividad, Tipo tipo, String mensaje) {

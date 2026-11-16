@@ -1,76 +1,55 @@
 package com.example.pm2e1grupo1.modelo;
 
-/** MODELO: datos de un contacto de la agenda. */
+/**
+ * MODELO: contacto tal como lo devuelve la API (se convierte desde JSON con Gson).
+ * Los nombres de los campos coinciden con el JSON del servidor.
+ */
 public class Contacto {
+
     private int id;
-    private String pais;
     private String nombre;
     private String telefono;
-    private String nota;
-    private String imagen; // URI de la foto en texto
-
-    public Contacto(int id, String pais, String nombre, String telefono, String nota, String imagen) {
-        this.id = id;
-        this.pais = pais;
-        this.nombre = nombre;
-        this.telefono = telefono;
-        this.nota = nota;
-        this.imagen = imagen;
-    }
-
-    public Contacto(String pais, String nombre, String telefono, String nota, String imagen) {
-        this.pais = pais;
-        this.nombre = nombre;
-        this.telefono = telefono;
-        this.nota = nota;
-        this.imagen = imagen;
-    }
+    private double latitud;
+    private double longitud;
+    private String tipoMime;
+    private long tamanoBytes;
+    private String archivoUrl;
+    private String fechaCreacion;
 
     public int getId() {
         return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getPais() {
-        return pais;
-    }
-
-    public void setPais(String pais) {
-        this.pais = pais;
     }
 
     public String getNombre() {
         return nombre;
     }
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
     public String getTelefono() {
         return telefono;
     }
 
-    public void setTelefono(String telefono) {
-        this.telefono = telefono;
+    public double getLatitud() {
+        return latitud;
     }
 
-    public String getNota() {
-        return nota;
+    public double getLongitud() {
+        return longitud;
     }
 
-    public void setNota(String nota) {
-        this.nota = nota;
+    public String getTipoMime() {
+        return tipoMime;
     }
 
-    public String getImagen() {
-        return imagen;
+    public long getTamanoBytes() {
+        return tamanoBytes;
     }
 
-    public void setImagen(String imagen) {
-        this.imagen = imagen;
+    /** Ruta relativa de la fotografia, por ejemplo /api/contactos/5/archivo. */
+    public String getArchivoUrl() {
+        return archivoUrl;
+    }
+
+    public String getFechaCreacion() {
+        return fechaCreacion;
     }
 }
