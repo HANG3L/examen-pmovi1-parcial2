@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -53,8 +61,14 @@ class ListaEstado : EstadoBase() {
     /** Texto cuando no hay contactos que mostrar (null mientras hay lista o se esta cargando). */
     var mensajeVacio by mutableStateOf<Int?>(null)
 
+    /** Contacto cuyas opciones estan desplegadas (null = hoja cerrada). */
+    var contactoAcciones by mutableStateOf<Contacto?>(null)
+
     fun seleccionado(): Contacto? = contactos.firstOrNull { it.id == idSeleccionado }
 }
+
+/** Opciones que se despliegan al tocar un contacto. */
+enum class AccionContacto { EDITAR, ELIMINAR, LLAMAR, UBICACION }
 
 private const val ESPERA_BUSQUEDA_MS = 350L
 
@@ -65,8 +79,7 @@ fun PantallaLista(
     alAtras: () -> Unit,
     alBuscar: () -> Unit,
     alTocar: (Contacto) -> Unit,
-    alEliminar: () -> Unit,
-    alActualizar: () -> Unit,
+    alElegirAccion: (AccionContacto, Contacto) -> Unit,
 ) {
     // Primera carga inmediata; despues de cada letra se espera a que el usuario deje de escribir.
     var cargoPrimeraVez by remember { mutableStateOf(false) }
@@ -149,35 +162,85 @@ fun PantallaLista(
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
                 }
             }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                BotonGrande(
-                    texto = stringResource(R.string.eliminar_contacto),
-                    icono = R.drawable.ic_eliminar,
-                    alPulsar = alEliminar,
-                    principal = false,
-                    enabled = !estado.cargando,
-                    modifier = Modifier.weight(1f),
-                )
-                BotonGrande(
-                    texto = stringResource(R.string.actualizar_contacto),
-                    icono = R.drawable.ic_editar,
-                    alPulsar = alActualizar,
-                    enabled = !estado.cargando,
-                    modifier = Modifier.weight(1f),
-                )
-            }
         }
     }
 
     estado.fotoGrande?.let { contacto ->
         DialogoFoto(contacto.nombre, contacto.archivoUrl) { estado.fotoGrande = null }
     }
+
+    estado.contactoAcciones?.let { contacto ->
+        HojaAcciones(
+            contacto = contacto,
+            alElegir = { accion -> alElegirAccion(accion, contacto) },
+            alCerrar = { estado.contactoAcciones = null },
+        )
+    }
+}
+
+/** Hoja inferior con las opciones del contacto: editar, eliminar, llamar y ver ubicacion. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HojaAcciones(
+    contacto: Contacto,
+    alElegir: (AccionContacto) -> Unit,
+    alCerrar: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = alCerrar) {
+        Row(
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FotoApi(
+                archivoUrl = contacto.archivoUrl,
+                ladoMaximo = 160,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape),
+            )
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(contacto.nombre, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    formatearTelefono(contacto.telefono),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+        OpcionHoja(R.drawable.ic_editar, stringResource(R.string.editar)) { alElegir(AccionContacto.EDITAR) }
+        OpcionHoja(R.drawable.ic_llamar, stringResource(R.string.llamar)) { alElegir(AccionContacto.LLAMAR) }
+        OpcionHoja(R.drawable.ic_mundo, stringResource(R.string.ver_ubicacion)) { alElegir(AccionContacto.UBICACION) }
+        OpcionHoja(
+            R.drawable.ic_eliminar,
+            stringResource(R.string.eliminar),
+            color = MaterialTheme.colorScheme.error,
+        ) { alElegir(AccionContacto.ELIMINAR) }
+
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun OpcionHoja(
+    icono: Int,
+    texto: String,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    alPulsar: () -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(texto, color = color) },
+        leadingContent = {
+            Icon(painterResource(icono), contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = alPulsar)
+            .padding(horizontal = 8.dp),
+    )
 }
 
 @Composable

@@ -24,6 +24,8 @@ import com.example.pm2e1grupo1.ui.alertaPermisoDenegado
 import com.example.pm2e1grupo1.util.CapturaFoto
 import com.example.pm2e1grupo1.util.GestorUbicacion
 import com.example.pm2e1grupo1.util.ImagenJpeg
+import com.example.pm2e1grupo1.util.RedLocal
+import com.example.pm2e1grupo1.ui.alertaRedLocalDenegada
 import okhttp3.Call
 import java.io.File
 import java.io.IOException
@@ -38,19 +40,20 @@ class MainActivity : ComponentActivity() {
     private val capturaFoto = CapturaFoto(this, { estado.foto = it }, { estado.alerta = it })
     private lateinit var gestorUbicacion: GestorUbicacion
 
-    private var permisoUbicacionSolicitado = false
+    private var permisosSolicitados = false
     private var avisoGpsMostrado = false
 
     /** Un solo hilo de trabajo: ajustar la foto no debe correr en el hilo principal. */
     private val trabajo = Executors.newSingleThreadExecutor()
     private var llamadaActual: Call? = null
 
-    private val lanzadorPermisoUbicacion =
+    /** Ubicacion y red local (Android 17+) se piden juntas al abrir la pantalla. */
+    private val lanzadorPermisos =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            if (gestorUbicacion.tienePermiso()) {
-                iniciarUbicacion()
-            } else {
-                estado.alerta = alertaUbicacionDenegada()
+            when {
+                !gestorUbicacion.tienePermiso() -> estado.alerta = alertaUbicacionDenegada()
+                !RedLocal.concedido(this) -> estado.alerta = alertaRedLocalDenegada(this)
+                else -> iniciarUbicacion()
             }
         }
 
@@ -97,18 +100,7 @@ class MainActivity : ComponentActivity() {
 
     /** Arranca la ubicacion en tiempo real, o explica por que no se puede (permiso o GPS apagado). */
     private fun iniciarUbicacion() {
-        if (!gestorUbicacion.tienePermiso()) {
-            if (!permisoUbicacionSolicitado) {
-                permisoUbicacionSolicitado = true
-                lanzadorPermisoUbicacion.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                    ),
-                )
-            }
-            return
-        }
+        if (pedirPermisosPendientes() || !gestorUbicacion.tienePermiso()) return
         if (!gestorUbicacion.gpsActivo()) {
             if (!avisoGpsMostrado) {
                 avisoGpsMostrado = true
@@ -118,6 +110,27 @@ class MainActivity : ComponentActivity() {
         }
         avisoGpsMostrado = false
         gestorUbicacion.iniciar()
+    }
+
+    /**
+     * Pide (una sola vez por pantalla) los permisos que falten: ubicacion y, en Android 17+,
+     * red local para poder llegar a la API. Devuelve true si se abrio la solicitud.
+     */
+    private fun pedirPermisosPendientes(): Boolean {
+        if (permisosSolicitados) return false
+
+        val pendientes = buildList {
+            if (!gestorUbicacion.tienePermiso()) {
+                add(Manifest.permission.ACCESS_FINE_LOCATION)
+                add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+            if (!RedLocal.concedido(this@MainActivity)) add(RedLocal.PERMISO)
+        }
+        if (pendientes.isEmpty()) return false
+
+        permisosSolicitados = true
+        lanzadorPermisos.launch(pendientes.toTypedArray())
+        return true
     }
 
     private fun alertaGpsApagado() = AlertaUi(
@@ -173,6 +186,10 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (!ubicacionLista()) return
+        if (!RedLocal.concedido(this)) {
+            estado.alerta = alertaRedLocalDenegada(this)
+            return
+        }
 
         enviar(nombre, telefono, estado.latitud!!, estado.longitud!!, foto!!)
     }

@@ -198,3 +198,11 @@ fun alertaPermisoDenegado(actividad: Activity, permiso: String, titulo: String, 
         },
     )
 }
+
+/** Alerta cuando se nego el permiso de red local (Android 17+): sin el no se llega a la API. */
+fun alertaRedLocalDenegada(actividad: Activity): AlertaUi = alertaPermisoDenegado(
+    actividad,
+    com.example.pm2e1grupo1.util.RedLocal.PERMISO,
+    "Permiso de red local denegado",
+    "La API corre en tu red local; sin este permiso la app no puede conectarse a ella.",
+)
