@@ -5,12 +5,11 @@ import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.LruCache;
-import android.widget.ImageView;
 
-import com.example.pm2e1grupo1.R;
+import java.util.function.Consumer;
 
 /**
- * Descarga las fotografias desde la API (con OkHttp) y las muestra en un ImageView.
+ * Descarga las fotografias desde la API (con OkHttp) y las entrega ya reducidas.
  * Guarda las ya descargadas en memoria para que la lista no vuelva a pedirlas al hacer scroll.
  */
 public final class CargadorImagenes {
@@ -29,21 +28,29 @@ public final class CargadorImagenes {
     private CargadorImagenes() {
     }
 
+    private static String clave(String archivoUrl, int ladoMaximo) {
+        return archivoUrl + "@" + ladoMaximo;
+    }
+
+    /** Foto ya descargada, o null si todavia no esta en memoria. */
+    public static Bitmap enCache(String archivoUrl, int ladoMaximo) {
+        return CACHE.get(clave(archivoUrl, ladoMaximo));
+    }
+
     /**
-     * Muestra la fotografia en la imagen. Mientras llega (o si falla) se ve la silueta.
+     * Descarga la fotografia y la entrega en el hilo principal.
      * ladoMaximo: tamano en pixeles al que se reduce la foto para no gastar memoria.
+     * Si falla la descarga no se llama al oyente (la pantalla se queda con la silueta).
      */
-    public static void mostrar(ImageView imagen, String archivoUrl, int ladoMaximo) {
-        String clave = archivoUrl + "@" + ladoMaximo;
-        imagen.setTag(R.id.imgFoto, clave); // marca qué foto espera esta vista (las filas se reciclan)
+    public static void cargar(String archivoUrl, int ladoMaximo, Consumer<Bitmap> alCargar) {
+        String clave = clave(archivoUrl, ladoMaximo);
 
         Bitmap guardada = CACHE.get(clave);
         if (guardada != null) {
-            imagen.setImageBitmap(guardada);
+            alCargar.accept(guardada);
             return;
         }
 
-        imagen.setImageResource(R.drawable.ic_persona);
         ContactosApi.descargarFotografia(archivoUrl, new ContactosApi.Respuesta<byte[]>() {
             @Override
             public void alExito(byte[] bytes) {
@@ -52,12 +59,7 @@ public final class CargadorImagenes {
                     return;
                 }
                 CACHE.put(clave, decodificada);
-                HILO_PRINCIPAL.post(() -> {
-                    // Solo se pinta si la vista sigue esperando esta misma foto.
-                    if (clave.equals(imagen.getTag(R.id.imgFoto))) {
-                        imagen.setImageBitmap(decodificada);
-                    }
-                });
+                HILO_PRINCIPAL.post(() -> alCargar.accept(decodificada));
             }
 
             @Override

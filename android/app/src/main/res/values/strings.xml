@@ -29,6 +29,7 @@
     <string name="no">No</string>
     <string name="cerrar">Cerrar</string>
     <string name="volver">Atrás</string>
+    <string name="limpiar">Limpiar búsqueda</string>
     <string name="eliminar">Eliminar</string>
     <string name="eliminar_contacto">Eliminar contacto</string>
     <string name="actualizar_contacto">Actualizar contacto</string>
