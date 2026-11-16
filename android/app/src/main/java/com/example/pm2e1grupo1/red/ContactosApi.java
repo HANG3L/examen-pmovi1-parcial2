@@ -1,6 +1,7 @@
 package com.example.pm2e1grupo1.red;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.example.pm2e1grupo1.modelo.Contacto;
 import com.google.gson.Gson;
@@ -8,10 +9,13 @@ import com.google.gson.JsonSyntaxException;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.Request;
@@ -33,6 +37,11 @@ public final class ContactosApi {
         void alError(ErrorApi error);
     }
 
+    /** Convierte el cuerpo de una respuesta exitosa en el objeto que espera la vista. */
+    private interface Convertidor<T> {
+        T convertir(ResponseBody cuerpo) throws IOException;
+    }
+
     /** Forma del JSON de error del servidor: { "mensaje": "...", "errores": [...] }. */
     private static class ErrorJson {
         String mensaje;
@@ -43,26 +52,68 @@ public final class ContactosApi {
     private ContactosApi() {
     }
 
+    /** GET /api/contactos?buscar= : lista los contactos, filtrados por nombre o telefono si hay texto. */
+    public static Call listar(@Nullable String buscar, Respuesta<List<Contacto>> respuesta) {
+        HttpUrl.Builder url = HttpUrl.get(ApiConfig.RUTA_CONTACTOS).newBuilder();
+        if (buscar != null && !buscar.trim().isEmpty()) {
+            url.addQueryParameter("buscar", buscar.trim());
+        }
+
+        Request peticion = new Request.Builder().url(url.build()).get().build();
+        return ejecutar(peticion,
+                cuerpo -> Arrays.asList(GSON.fromJson(cuerpo.string(), Contacto[].class)),
+                respuesta);
+    }
+
     /** POST /api/contactos (multipart/form-data) con la fotografia como image/jpeg. */
     public static Call crear(String nombre, String telefono, double latitud, double longitud,
                              File fotografia, Respuesta<Contacto> respuesta) {
-        RequestBody cuerpoArchivo = RequestBody.create(fotografia, MediaType.parse(ApiConfig.MIME_JPEG));
+        Request peticion = new Request.Builder()
+                .url(ApiConfig.RUTA_CONTACTOS)
+                .post(formulario(nombre, telefono, latitud, longitud, fotografia))
+                .build();
+        return ejecutar(peticion, cuerpo -> GSON.fromJson(cuerpo.string(), Contacto.class), respuesta);
+    }
 
-        RequestBody cuerpo = new MultipartBody.Builder()
+    /** PUT /api/contactos/{id} (multipart/form-data). La fotografia es opcional: null conserva la actual. */
+    public static Call actualizar(int id, String nombre, String telefono, double latitud, double longitud,
+                                  @Nullable File fotografia, Respuesta<Contacto> respuesta) {
+        Request peticion = new Request.Builder()
+                .url(ApiConfig.RUTA_CONTACTOS + "/" + id)
+                .put(formulario(nombre, telefono, latitud, longitud, fotografia))
+                .build();
+        return ejecutar(peticion, cuerpo -> GSON.fromJson(cuerpo.string(), Contacto.class), respuesta);
+    }
+
+    /** DELETE /api/contactos/{id} : la API responde 204 sin cuerpo. */
+    public static Call eliminar(int id, Respuesta<Void> respuesta) {
+        Request peticion = new Request.Builder()
+                .url(ApiConfig.RUTA_CONTACTOS + "/" + id)
+                .delete()
+                .build();
+        return ejecutar(peticion, cuerpo -> null, respuesta);
+    }
+
+    /** GET de la fotografia: archivoUrl es la ruta relativa del contacto (/api/contactos/{id}/archivo). */
+    public static Call descargarFotografia(String archivoUrl, Respuesta<byte[]> respuesta) {
+        Request peticion = new Request.Builder().url(ApiConfig.BASE_URL + archivoUrl).get().build();
+        return ejecutar(peticion, ResponseBody::bytes, respuesta);
+    }
+
+    private static RequestBody formulario(String nombre, String telefono, double latitud, double longitud,
+                                          @Nullable File fotografia) {
+        MultipartBody.Builder cuerpo = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("nombre", nombre)
                 .addFormDataPart("telefono", telefono)
                 .addFormDataPart("latitud", numero(latitud))
-                .addFormDataPart("longitud", numero(longitud))
-                .addFormDataPart("archivo", fotografia.getName(), cuerpoArchivo)
-                .build();
+                .addFormDataPart("longitud", numero(longitud));
 
-        Request peticion = new Request.Builder()
-                .url(ApiConfig.RUTA_CONTACTOS)
-                .post(cuerpo)
-                .build();
-
-        return ejecutar(peticion, Contacto.class, respuesta);
+        if (fotografia != null) {
+            RequestBody archivo = RequestBody.create(fotografia, MediaType.parse(ApiConfig.MIME_JPEG));
+            cuerpo.addFormDataPart("archivo", fotografia.getName(), archivo);
+        }
+        return cuerpo.build();
     }
 
     /** Siempre con punto decimal, sin importar el idioma del telefono (el servidor espera 14.48). */
@@ -70,7 +121,7 @@ public final class ContactosApi {
         return String.format(Locale.US, "%.6f", valor);
     }
 
-    private static <T> Call ejecutar(Request peticion, Class<T> tipo, Respuesta<T> respuesta) {
+    private static <T> Call ejecutar(Request peticion, Convertidor<T> convertidor, Respuesta<T> respuesta) {
         Call llamada = ClienteHttp.obtener().newCall(peticion);
         llamada.enqueue(new Callback() {
             @Override
@@ -84,16 +135,17 @@ public final class ContactosApi {
             public void onResponse(@NonNull Call call, @NonNull Response response) {
                 try (response) {
                     ResponseBody cuerpo = response.body();
-                    String texto = cuerpo == null ? "" : cuerpo.string();
-
                     if (response.isSuccessful()) {
-                        respuesta.alExito(GSON.fromJson(texto, tipo));
+                        respuesta.alExito(convertidor.convertir(cuerpo));
                     } else {
+                        String texto = cuerpo == null ? "" : cuerpo.string();
                         respuesta.alError(ErrorApi.deServidor(response.code(), mensajeDeError(texto, response.code())));
                     }
                 } catch (IOException e) {
-                    respuesta.alError(ErrorApi.deConexion());
-                } catch (JsonSyntaxException e) {
+                    if (!call.isCanceled()) {
+                        respuesta.alError(ErrorApi.deConexion());
+                    }
+                } catch (JsonSyntaxException | NullPointerException e) {
                     respuesta.alError(ErrorApi.deServidor(0, "La respuesta del servidor no es válida."));
                 }
             }
