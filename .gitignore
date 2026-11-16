@@ -1,0 +1,58 @@
+# ---------- General ----------
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# ---------- Secrets / entorno (API) ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Android ----------
+android/**/*.iml
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/.idea/caches/
+android/.idea/libraries/
+android/.idea/modules.xml
+android/.idea/workspace.xml
+android/.idea/shelf/
+android/.idea/navEditor.xml
+android/.idea/assetWizardSettings.xml
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# ---------- API: C# / .NET ----------
+api/**/bin/
+api/**/obj/
+api/**/Debug/
+api/**/Release/
+api/.vs/
+api/**/.vs/
+api/**/*.user
+api/**/*.suo
+api/**/*.userprefs
+api/**/*.DotSettings.user
+api/**/launchSettings.json.user
+api/**/TestResults/
+api/**/*.nupkg
+api/**/publish/
+api/**/appsettings.Development.json
+api/**/appsettings.Local.json
+api/**/secrets.json
+api/**/*.mdf
+api/**/*.ldf
+api/**/*.db
+api/**/*.sqlite
+
+# ---------- Herramientas ----------
+.artifacts/
+.vscode/
